@@ -35,18 +35,6 @@ async def get_voices():
     return {"voices": list(VOICES.keys())}
 
 
-@app.get("/history")
-async def get_history():
-    files = sorted(OUTPUT_DIR.glob("*.mp3"), key=lambda f: f.stat().st_mtime, reverse=True)
-    return {"files": [f.name for f in files[:20]]}
-
-
-@app.get("/download/{filename}")
-async def download_file(filename: str):
-    file_path = OUTPUT_DIR / filename
-    return FileResponse(path=file_path, media_type="audio/mpeg", filename=filename)
-
-
 @app.post("/generate")
 async def generate(
     text: str = Form(...),
