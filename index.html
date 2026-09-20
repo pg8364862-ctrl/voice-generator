@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Voice Generator</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f4f5f7;
+    margin: 0;
+    padding: 40px 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    padding: 32px;
+    width: 100%;
+    max-width: 480px;
+  }
+  h1 {
+    font-size: 20px;
+    margin: 0 0 20px;
+    text-align: center;
+    color: #1a1a1a;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+  textarea, select, input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  textarea {
+    min-height: 120px;
+    resize: vertical;
+  }
+  button {
+    width: 100%;
+    margin-top: 24px;
+    padding: 12px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+  #status {
+    margin-top: 14px;
+    font-size: 13px;
+    text-align: center;
+    color: #555;
+    min-height: 18px;
+  }
+  #history a {
+    display: block;
+    color: #2563eb;
+    margin-top: 4px;
+    text-decoration: none;
+    font-size: 13px;
+  }
+  #history a:hover {
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎙️ AI Voice Generator</h1>
+
+    <label for="text">Script</label>
+    <textarea id="text" placeholder="Yahan apni script likho..."></textarea>
+
+    <label for="voice">Voice</label>
+    <select id="voice"></select>
+
+    <label for="filename">File Name</label>
+    <input type="text" id="filename" placeholder="fitness_01" value="output">
+
+    <label for="speed">Speed</label>
+    <select id="speed">
+      <option value="-25%">Slow</option>
+      <option value="+0%" selected>Normal</option>
+      <option value="+25%">Fast</option>
+      <option value="+50%">Very Fast</option>
+    </select>
+
+    <button id="generateBtn" onclick="generate()">Generate Voice</button>
+    <div id="status"></div>
+
+    <label>Recent Files</label>
+    <div id="history"></div>
+  </div>
+
+<script>
+  async function loadVoices() {
+    const res = await fetch("/voices");
+    const data = await res.json();
+    const select = document.getElementById("voice");
+    data.voices.forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      select.appendChild(opt);
+    });
+  }
+
+  async function loadHistory() {
+    const res = await fetch("/history");
+    const data = await res.json();
+    const container = document.getElementById("history");
+    container.innerHTML = "";
+    if (data.files.length === 0) {
+      container.textContent = "Koi file nahi bani abhi tak.";
+      return;
+    }
+    data.files.forEach(f => {
+      const link = document.createElement("a");
+      link.href = "/download/" + f;
+      link.textContent = f;
+      container.appendChild(link);
+    });
+  }
+
+  async function generate() {
+    const text = document.getElementById("text").value.trim();
+    const voice = document.getElementById("voice").value;
+    const filename = document.getElementById("filename").value.trim() || "output";
+    const speed = document.getElementById("speed").value;
+    const btn = document.getElementById("generateBtn");
+    const status = document.getElementById("status");
+
+    if (!text) {
+      status.textContent = "Pehle script likho.";
+      return;
+    }
+
+    btn.disabled = true;
+    status.textContent = "Generating... thoda wait karo.";
+
+    try {
+      const formData = new FormData();
+      formData.append("text", text);
+      formData.append("voice", voice);
+      formData.append("filename", filename);
+      formData.append("speed", speed);
+
+      const res = await fetch("/generate", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Server error");
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename + ".mp3";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      status.textContent = "✅ MP3 download ho gayi!";
+      loadHistory();
+    } catch (err) {
+      status.textContent = "❌ Kuch galat hua: " + err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  loadVoices();
+  loadHistory();
+</script>
+</body>
+</html>
